@@ -1,0 +1,12 @@
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.so
+*.egg
+*.egg-info/
+dist/
+build/
+*.ais
+aws_connection_info.txt

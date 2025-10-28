@@ -1,0 +1,22 @@
+{
+    "ModelType": "ObjectClassification",
+    "InferenceFunction": "VisionLanguageClassification.py",
+    "MetaDataMode": "Imagenet",
+    "ExtractBands": [
+        0,
+        1,
+        2
+    ],
+    "CropSizeFixed": 0,
+    "BlackenAroundFeature": 0,
+    "ImageSpaceUsed": "MAP_SPACE",
+    "ModelFormat": "NCHW",
+    "MinCellSize": null,
+    "MaxCellSize": null,
+    "SupportsVariableTileSize": false,
+	"ModelName": "VisionLanguageClassification",
+    "ImageHeight": 1024,
+    "ImageWidth": 1024,
+    "resize_to": null,
+    "IsMultispectral": false
+}
