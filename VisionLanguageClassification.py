@@ -344,22 +344,19 @@ class VisionLanguageClassification:
                     "serviceProviderProperties", {}
                 ).get("model_id", None)
             elif self.service_provider == "AWS":  # NEW AWS support
-                spp = conn_param_v.get(
-                    "serviceProviderProperties", {}
-                )  # NEW AWS support
-                self.model_id = spp.get("model_id", None)  # NEW AWS support
-                if not self.model_id:  # NEW AWS support
-                    raise Exception(  # NEW AWS support
+                spp = conn_param_v.get("serviceProviderProperties", {})
+                self.model_id = spp.get("model_id", None)
+                if not self.model_id:
+                    raise Exception(
                         "AWS model_id is required in connection file serviceProviderProperties"
                     )
-                self.region_name = spp.get("aws_region_name", None)  # NEW AWS support
-                if not self.region_name:  # NEW AWS support
-                    raise Exception(  # NEW AWS support
+                self.region_name = spp.get("aws_region_name", None)
+                if not self.region_name:
+                    raise Exception(
                         "AWS aws_region_name is required in connection file serviceProviderProperties"
                     )
-                # AWS uses authenticationSecrets.token (already loaded into self.api_key above)
-                if not self.api_key:  # NEW AWS support
-                    raise Exception(  # NEW AWS support
+                if not self.api_key:
+                    raise Exception(
                         "AWS api token is required in connection file authenticationSecrets"
                     )
             else:
@@ -368,32 +365,10 @@ class VisionLanguageClassification:
                 ).get("deployment_name", None)
 
         else:
-            # Legacy/simple connection file without "version" key
-            self.service_provider = conn_params.get("service_provider", None)
-            if self.service_provider == "AWS":  # NEW AWS support
-                # Expecting keys: model_id, region_name, and token  # NEW AWS support
-                self.model_id = conn_params.get("model_id", None)  # NEW AWS support
-                if not self.model_id:  # NEW AWS support
-                    raise Exception(
-                        "AWS model_id is required in connection file"
-                    )  # NEW AWS support
-                self.region_name = conn_params.get(
-                    "region_name", None
-                )  # NEW AWS support
-                if not self.region_name:  # NEW AWS support
-                    raise Exception(
-                        "AWS region_name is required in connection file"
-                    )  # NEW AWS support
-                self.api_key = conn_params.get("token", None)  # NEW AWS support
-                if not self.api_key:  # NEW AWS support
-                    raise Exception(
-                        "AWS token is required in connection file"
-                    )  # NEW AWS support
-            else:
-                self.azure_endpoint = conn_params.get("azure_endpoint", None)
-                self.api_key = conn_params.get("api_key", None)
-                self.api_version = conn_params.get("api_version", None)
-                self.deployment_name = conn_params.get("deployment_name", None)
+            self.azure_endpoint = conn_params.get("azure_endpoint", None)
+            self.api_key = conn_params.get("api_key", None)
+            self.api_version = conn_params.get("api_version", None)
+            self.deployment_name = conn_params.get("deployment_name", None)
 
         if self.service_provider == "AzureOpenAI" or self.service_provider == "Azure":
             self.client = AzureOpenAI(
@@ -421,13 +396,13 @@ class VisionLanguageClassification:
                 "meta-llama/Llama-3.2-11B-Vision-Instruct"
             )
         elif self.service_provider == "AWS":  # NEW AWS support
-            from aws_client import AWSBedrockClient  # NEW AWS support
+            from aws_client import AWSBedrockClient
 
-            self.client = AWSBedrockClient(  # NEW AWS support
-                model_id=self.model_id,  # NEW AWS support
-                region_name=self.region_name,  # NEW AWS support
-                api_key=self.api_key,  # NEW AWS support
-            )  # NEW AWS support
+            self.client = AWSBedrockClient(
+                model_id=self.model_id,
+                region_name=self.region_name,
+                api_key=self.api_key,
+            )
         else:
             raise Exception("Unknown provider")
 
@@ -484,9 +459,9 @@ class VisionLanguageClassification:
             if self.client == "llama":
                 answer = process_llama_request(self, temp)
             elif hasattr(self.client, "classify_image"):  # NEW AWS support
-                answer = self.client.classify_image(  # NEW AWS support
-                    encoded_image, sys_prompt, width, height  # NEW AWS support
-                )  # NEW AWS support
+                answer = self.client.classify_image(
+                    encoded_image, sys_prompt, width, height
+                )
             else:
                 try:
                     response = self.client.chat.completions.create(
