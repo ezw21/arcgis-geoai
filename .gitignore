@@ -8,5 +8,11 @@ __pycache__/
 *.egg-info/
 dist/
 build/
+
+# AWS connection files and logs (contain sensitive credentials)
 *.ais
-aws_connection_info.txt
+
+# Python virtual environment
+.venv/
+venv/
+ENV/

@@ -1,13 +1,44 @@
+"""
+AWS Bedrock Client for Vision Language Classification
+
+This module provides a client interface for AWS Bedrock foundation models,
+enabling image classification using Amazon's Converse API.
+
+Author: Edward Wong (edward_wong@eagle.co.nz)
+Last Modified: 31st October 2025
+"""
+
 import json
-import requests
+import boto3
 from typing import Dict, Any, Optional
+
+try:
+    import boto3
+    from botocore.exceptions import ClientError
+
+    BOTO3_AVAILABLE = True
+except ImportError:
+    BOTO3_AVAILABLE = False
 
 
 def _extract_json_from_text(text: str) -> Dict[str, Any]:
     """
     Extract a JSON object from a model text response.
-    Handles code-fenced blocks like ```json\n{...}\n``` and multi-line content.
-    Returns a Python object (dict/list) if possible, else raises.
+
+    Handles various response formats including:
+    - Direct JSON objects
+    - Code-fenced blocks (```json\n{...}\n```)
+    - Mixed text with embedded JSON
+    - Multi-line JSON structures
+
+    Args:
+        text: Raw text response from the model
+
+    Returns:
+        Parsed JSON as a Python dictionary
+
+    Raises:
+        ValueError: If no valid JSON object found in text
     """
     if text is None:
         raise ValueError("empty text")
@@ -58,61 +89,82 @@ def _extract_json_from_text(text: str) -> Dict[str, Any]:
 
 
 class AWSBedrockClient:
-    """AWS Bedrock client for making API requests"""
+    """
+    AWS Bedrock client for vision language classification.
 
-    def __init__(self, model_id: str, region_name: str, api_key: Optional[str] = None):
+    This client uses the AWS Bedrock Converse API to send images and prompts
+    to foundation models for classification tasks. Authentication is handled
+    via boto3 with AWS SigV4 signing.
+
+    Attributes:
+        model_id: AWS Bedrock model identifier (e.g., "us.amazon.nova-premier-v1:0")
+        region_name: AWS region (e.g., "us-east-1")
+        aws_access_key_id: AWS IAM access key
+        aws_secret_access_key: AWS IAM secret key
+        client: boto3 bedrock-runtime client for inference
+    """
+
+    def __init__(
+        self,
+        model_id: str,
+        region_name: str,
+        aws_access_key_id: Optional[str] = None,
+        aws_secret_access_key: Optional[str] = None,
+    ):
+        if not BOTO3_AVAILABLE:
+            raise ImportError(
+                "boto3 is required for AWS Bedrock. Install it with: pip install boto3"
+            )
+
         self.model_id = model_id
         self.region_name = region_name
-        self.api_key = api_key
-        self.base_url = f"https://bedrock-runtime.{region_name}.amazonaws.com/model/{model_id}/converse"
+        self.aws_access_key_id = aws_access_key_id
+        self.aws_secret_access_key = aws_secret_access_key
 
-    def test_connection(self) -> bool:
-        """Test AWS Bedrock connection with a simple text message"""
-        try:
-            test_payload = {
-                "messages": [{"role": "user", "content": [{"text": "Hi How are you"}]}],
-                "inferenceConfig": {"maxTokens": 64, "temperature": 0.0},
-            }
-            test_headers = {
-                "Content-Type": "application/json",
-                "Authorization": (f"Bearer {self.api_key}" if self.api_key else None),
-            }
-            test_headers = {k: v for k, v in test_headers.items() if v is not None}
-
-            test_resp = requests.post(
-                self.base_url, json=test_payload, headers=test_headers, timeout=30
-            )
-            status = test_resp.status_code
-            rid = test_resp.headers.get("x-amzn-requestid") or test_resp.headers.get(
-                "x-amzn-request-id"
-            )
-
-            test_resp.raise_for_status()
-            return True
-
-        except requests.exceptions.HTTPError as http_err:
-            return False
-        except Exception as e:
-            return False
+        # Initialize boto3 bedrock-runtime client
+        self.client = boto3.client(
+            "bedrock-runtime",
+            region_name=self.region_name,
+            aws_access_key_id=self.aws_access_key_id,
+            aws_secret_access_key=self.aws_secret_access_key,
+        )
 
     def classify_image(
         self, encoded_image: str, sys_prompt: str, width: int, height: int
     ) -> Dict[str, Any]:
         """
-        Classify an image using AWS Bedrock Converse API
+        Classify an image using AWS Bedrock Converse API.
+
+        Sends a base64-encoded image along with a system prompt to the configured
+        AWS Bedrock foundation model. The model returns a JSON response with
+        classification results.
 
         Args:
-            encoded_image: Base64 encoded JPEG image
-            sys_prompt: System prompt for classification
-            width: Image width
-            height: Image height
+            encoded_image: Base64 encoded JPEG image string
+            sys_prompt: System prompt containing classification instructions and classes
+            width: Image width in pixels (for metadata)
+            height: Image height in pixels (for metadata)
 
         Returns:
-            Dictionary with Classification and Reason keys
+            Dictionary containing:
+                - Classification: The predicted class label
+                - Reason: Explanation for the classification
+            Returns {"Classification": "Unknown", "Reason": "..."} on error
+
+        Inference Configuration:
+            - temperature: 0.2 (deterministic, focused responses)
+            - maxTokens: 512 (sufficient for JSON classification output)
         """
         try:
-            payload = {
-                "messages": [
+            # Decode base64 image to bytes for boto3
+            import base64
+
+            image_bytes = base64.b64decode(encoded_image)
+
+            # Call AWS Bedrock Converse API using boto3
+            response = self.client.converse(
+                modelId=self.model_id,
+                messages=[
                     {
                         "role": "user",
                         "content": [
@@ -120,37 +172,24 @@ class AWSBedrockClient:
                             {
                                 "image": {
                                     "format": "jpeg",
-                                    "source": {"bytes": encoded_image},
+                                    "source": {"bytes": image_bytes},
                                 }
                             },
                         ],
                     }
                 ],
-                "inferenceConfig": {"maxTokens": 512, "temperature": 0.2},
-            }
-            headers = {
-                "Content-Type": "application/json",
-                # Using API key as bearer if provided; alternatively use SigV4 via AWS SDK.
-                "Authorization": (f"Bearer {self.api_key}" if self.api_key else None),
-            }
-            # Remove None headers
-            headers = {k: v for k, v in headers.items() if v is not None}
-
-            resp = requests.post(
-                self.base_url, json=payload, headers=headers, timeout=60
+                inferenceConfig={"maxTokens": 512, "temperature": 0.2},
             )
-            resp.raise_for_status()
-            resp_json = resp.json()
 
-            # Bedrock converse response shape: output.message.content[0].text
+            # Extract text from response: output.message.content[0].text
             output_text = None
             try:
-                output_message = (
-                    resp_json.get("output", {}).get("message", {}).get("content", [])
+                output_content = (
+                    response.get("output", {}).get("message", {}).get("content", [])
                 )
-                if output_message and isinstance(output_message, list):
+                if output_content and isinstance(output_content, list):
                     # Find first text content
-                    for part in output_message:
+                    for part in output_content:
                         if "text" in part:
                             output_text = part.get("text")
                             break
@@ -158,18 +197,16 @@ class AWSBedrockClient:
                 output_text = None
 
             if not output_text:
-                # Fallback: some models return at top-level or different shape
-                output_text = resp_json.get("content", "") or resp_json.get(
-                    "message", ""
-                )
+                return {"Classification": "Unknown", "Reason": "No output text"}
 
-            # Expect a JSON object in output_text
+            # Parse JSON from model response
             try:
-                return _extract_json_from_text(output_text)
-            except Exception as e:
-                return {"Classification": "Unknown", "Reason": "Unknown"}
+                result = _extract_json_from_text(output_text)
+                return result
+            except Exception:
+                return {"Classification": "Unknown", "Reason": "JSON parse failed"}
 
-        except requests.exceptions.HTTPError as http_err:
-            return {"Classification": "Unknown", "Reason": "Unknown"}
+        except ClientError:
+            return {"Classification": "Unknown", "Reason": "AWS ClientError"}
         except Exception:
-            return {"Classification": "Unknown", "Reason": "Unknown"}
+            return {"Classification": "Unknown", "Reason": "Exception"}

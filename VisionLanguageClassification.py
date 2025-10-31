@@ -344,20 +344,31 @@ class VisionLanguageClassification:
                     "serviceProviderProperties", {}
                 ).get("model_id", None)
             elif self.service_provider == "AWS":  # NEW AWS support
-                spp = conn_param_v.get("serviceProviderProperties", {})
-                self.model_id = spp.get("model_id", None)
-                if not self.model_id:
+                spp = conn_param_v.get(
+                    "serviceProviderProperties", {}
+                )  
+                self.model_id = spp.get("model_id", None)  
+                if not self.model_id:  
                     raise Exception(
                         "AWS model_id is required in connection file serviceProviderProperties"
                     )
-                self.region_name = spp.get("aws_region_name", None)
-                if not self.region_name:
+                self.region_name = spp.get("aws_region_name", None)  
+                if not self.region_name:  
                     raise Exception(
                         "AWS aws_region_name is required in connection file serviceProviderProperties"
                     )
-                if not self.api_key:
+                # AWS access key ID from serviceProviderProperties
+                self.aws_access_key_id = spp.get(
+                    "aws_access_key", None
+                )  
+                if not self.aws_access_key_id:  
                     raise Exception(
-                        "AWS api token is required in connection file authenticationSecrets"
+                        "AWS aws_access_key is required in connection file serviceProviderProperties"
+                    )
+                # AWS secret access key from authenticationSecrets token
+                if not self.api_key:  
+                    raise Exception(
+                        "AWS secret access key is required in connection file authenticationSecrets"
                     )
             else:
                 self.deployment_name = conn_param_v.get(
@@ -396,13 +407,14 @@ class VisionLanguageClassification:
                 "meta-llama/Llama-3.2-11B-Vision-Instruct"
             )
         elif self.service_provider == "AWS":  # NEW AWS support
-            from aws_client import AWSBedrockClient
+            from aws_client import AWSBedrockClient  
 
-            self.client = AWSBedrockClient(
-                model_id=self.model_id,
-                region_name=self.region_name,
-                api_key=self.api_key,
-            )
+            self.client = AWSBedrockClient(  
+                model_id=self.model_id,  
+                region_name=self.region_name,  
+                aws_access_key_id=self.aws_access_key_id,  
+                aws_secret_access_key=self.api_key,  
+            )  
         else:
             raise Exception("Unknown provider")
 
