@@ -1,0 +1,17 @@
+{
+  "version": "1.0",
+  "serviceProvider": "AWS",
+  "protocol": "",
+  "host": "",
+  "authenticationScheme": "accessToken",
+  "authenticationProperties": {
+    "parameterType": "header",
+    "parameterName": "aws_secret_key"
+  },
+  "authenticationSecrets": { "token": "0263d9ecb39c11f0affb010101010000" },
+  "serviceProviderProperties": {
+    "model_id": "us.amazon.nova-premier-v1:0",
+    "aws_region_name": "us-west-2",
+    "aws_access_key": ""
+  }
+}
