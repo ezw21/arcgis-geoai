@@ -1,2 +1,0 @@
-{"aws_client_init": {"model_id": "us.amazon.nova-premier-v1:0", "region": "us-east-1", "access_key": "AKIAXI5PHSI2IYOUXB4X", "secret_key_length": 40, "secret_key_preview": "furunanD...u8NC"}}
-{"aws_client_init": {"model_id": "us.amazon.nova-premier-v1:0", "region": "us-east-1", "access_key": "AKIAXI5PHSI2IYOUXB4X", "secret_key_length": 40, "secret_key_preview": "furunanD...u8NC"}}
